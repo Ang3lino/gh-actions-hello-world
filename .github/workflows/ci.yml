@@ -21,7 +21,14 @@ jobs:
           git diff --quiet HEAD^ HEAD -- app/ || echo "app-changes=true" >> $GITHUB_ENV
           git diff --quiet HEAD^ HEAD -- tf/ || echo "tf-changes=true" >> $GITHUB_ENV
 
-      # Step 3: Apply Terraform if changes are detected in tf/
+      # Step 3: Set up Terraform
+      - name: Set up Terraform
+        if: env.tf-changes == 'true'
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0  # Adjust to your required version
+
+      # Step 4: Apply Terraform if changes are detected in tf/
       - name: Apply Terraform changes
         if: env.tf-changes == 'true'
         run: |
@@ -30,7 +37,7 @@ jobs:
           terraform init
           terraform apply -auto-approve
 
-      # Step 4: Deploy if changes are detected in app/
+      # Step 5: Deploy only if app/ changed
       - name: Deploy only if app/ changed
         if: env.app-changes == 'true'
         env:
@@ -43,14 +50,14 @@ jobs:
           chmod +x ./deploy.sh
           ./deploy.sh
 
-      # Step 5: Optionally verify Docker image pushed
+      # Step 6: Optionally verify Docker image pushed
       - name: Verify Docker image pushed
         if: env.app-changes == 'true'
         run: |
           ECR_REPO_NAME='hello-actions-ecr-repo'
           aws ecr describe-images --repository-name $ECR_REPO_NAME --region us-east-1
 
-      # Step 6: Update ECS service
+      # Step 7: Update ECS service
       - name: Update ECS service
         if: env.app-changes == 'true'
         run: |
