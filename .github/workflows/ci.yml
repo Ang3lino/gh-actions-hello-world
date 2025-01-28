@@ -18,12 +18,21 @@ jobs:
         id: changes
         run: |
           git fetch origin main
-          if ! git diff --quiet origin/main -- app/; then echo "app-changes=true" >> $GITHUB_ENV; fi
-          if ! git diff --quiet origin/main -- tf/; then echo "tf-changes=true" >> $GITHUB_ENV; fi
+          if ! git diff --quiet origin/main -- app/; then 
+            echo "Changes detected in app/"
+            echo "app-changes=true" >> $GITHUB_ENV
+          else 
+            echo "No changes detected in app/"
+          fi
+          if ! git diff --quiet origin/main -- tf/; then 
+            echo "Changes detected in tf/"
+            echo "tf-changes=true" >> $GITHUB_ENV
+          else 
+            echo "No changes detected in tf/"
+          fi
 
-      # Step 3: Set up AWS credentials for Terraform
+      # Step 3: Set up AWS credentials
       - name: Set up AWS credentials
-        if: env.tf-changes == 'true'
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -32,30 +41,27 @@ jobs:
 
       # Step 4: Set up Terraform
       - name: Set up Terraform
-        if: env.tf-changes == 'true'
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.5.0  # Adjust to your required version
 
       # Step 5: Apply Terraform changes
       - name: Apply Terraform changes
-        if: env.tf-changes == 'true'
         run: |
-          echo "Changes detected in tf/, applying Terraform..."
+          echo "Applying Terraform changes..."
           cd tf
           terraform init
           terraform apply -auto-approve
 
-      # Step 6: Deploy only if app/ changed
-      - name: Deploy only if app/ changed
-        if: env.app-changes == 'true'
+      # Step 6: Deploy the application
+      - name: Deploy application
         env:
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
           ECR_REPO_NAME: ${{ secrets.ECR_REPO_NAME }}
           DOCKER_IMAGE_TAG: latest  # Can be adjusted if needed
           AWS_REGION: us-east-1
         run: |
-          echo "Changes detected in app/, proceeding with deployment..."
+          echo "Deploying application..."
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
           cd app
           chmod +x ./deploy.sh
@@ -63,17 +69,17 @@ jobs:
 
       # Step 7: Verify Docker image pushed
       - name: Verify Docker image pushed
-        if: env.app-changes == 'true'
         env:
           ECR_REPO_NAME: ${{ secrets.ECR_REPO_NAME }}
         run: |
+          echo "Verifying Docker image pushed to ECR..."
           aws ecr describe-images --repository-name $ECR_REPO_NAME --region us-east-1
 
       # Step 8: Update ECS service
       - name: Update ECS service
-        if: env.app-changes == 'true'
         env:
           CLUSTER_NAME: hello-actions-cluster  # Update with your cluster name
           SERVICE_NAME: cc-hello-actions-service  # Update with your service name
         run: |
+          echo "Updating ECS service..."
           aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --force-new-deployment
