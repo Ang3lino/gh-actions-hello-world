@@ -10,6 +10,14 @@ terraform {
       version = "~> 4.0"
     }
   }
+
+  backend "s3" {
+    bucket         = "angelttv-tf-state"
+    dynamodb_table = "stateHelloActions"
+    key            = "tf-infra/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+  }
 }
 
 module "ecsCluster" {
