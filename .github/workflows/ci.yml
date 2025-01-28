@@ -17,18 +17,19 @@ jobs:
       - name: Check for changes in app/ and tf/ directories
         id: changes
         run: |
-          git fetch origin main
-          if ! git diff --quiet origin/main -- app/; then 
+          # Compare with the previous commit
+          if git diff --quiet HEAD~1 -- app/; then 
+            echo "No changes detected in app/"
+          else 
             echo "Changes detected in app/"
             echo "app-changes=true" >> $GITHUB_ENV
-          else 
-            echo "No changes detected in app/"
           fi
-          if ! git diff --quiet origin/main -- tf/; then 
+
+          if git diff --quiet HEAD~1 -- tf/; then 
+            echo "No changes detected in tf/"
+          else 
             echo "Changes detected in tf/"
             echo "tf-changes=true" >> $GITHUB_ENV
-          else 
-            echo "No changes detected in tf/"
           fi
 
       # Set up AWS credentials
