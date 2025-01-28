@@ -61,7 +61,7 @@ function push_docker_image() {
 # Script Execution
 ECR_REPO_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:${DOCKER_IMAGE_TAG}"
 
-docker_login "$AWS_REGION" "$AWS_ACCOUNT_ID"
+# docker_login "$AWS_REGION" "$AWS_ACCOUNT_ID" # for local dev
 build_docker_image "${ECR_REPO_NAME}:${DOCKER_IMAGE_TAG}" "$DOCKERFILE_PATH"
 tag_docker_image "${ECR_REPO_NAME}:${DOCKER_IMAGE_TAG}" "$ECR_REPO_URI"
 push_docker_image "$ECR_REPO_URI"
