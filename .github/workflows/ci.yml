@@ -20,18 +20,15 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      # Install Docker credential helper to avoid unencrypted password storage
-      - name: Install Docker credential helper for AWS ECR
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker-credential-ecr-login
+      # Log in to Amazon ECR with docker/login-action
+      - name: Log in to Amazon ECR
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+          username: AWS
+          password: ${{ secrets.AWS_ECR_AUTH_TOKEN }}
 
-      # Configure Docker to use the ECR credential helper
-      - name: Configure Docker to use credential helper
-        run: |
-          mkdir -p ~/.docker
-          echo '{"credsStore": "ecr-login"}' > ~/.docker/config.json
-
+      # Run deploy script
       - name: Run deploy script
         run: |
           cd app
