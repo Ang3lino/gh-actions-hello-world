@@ -21,7 +21,7 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          docker build -t ${{ secrets.ECR_REPO_NAME }} .
+          docker build -t ${{ secrets.ECR_REPO_NAME }} app/ --platform=linux/amd64
           docker tag ${{ secrets.ECR_REPO_NAME }}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
           docker push ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
         env:
