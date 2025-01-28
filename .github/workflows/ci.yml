@@ -8,27 +8,45 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_REGION: us-east-1
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      DOCKER_IMAGE_TAG: latest  # You can change this if needed
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      # Set up AWS credentials securely using aws-actions/configure-aws-credentials
+      - name: Set up AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # Install Docker credential helper to avoid unencrypted password storage
+      - name: Install Docker credential helper for AWS ECR
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-credential-ecr-login
+
+      # Configure Docker to use the ECR credential helper
+      - name: Configure Docker to use credential helper
+        run: |
+          mkdir -p ~/.docker
+          echo '{"credsStore": "ecr-login"}' > ~/.docker/config.json
 
       - name: Run deploy script
         run: |
           cd app
           chmod +x ./deploy.sh
           ./deploy.sh
+        env:
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          ECR_REPO_NAME: ${{ secrets.ECR_REPO_NAME }}
+          DOCKER_IMAGE_TAG: latest  # Can be adjusted if needed
 
-      # Optionally, if you need to clean up or verify the push:
+      # Optionally, if you need to clean up or verify the push
       - name: Verify Docker image pushed
         run: |
           ECR_REPO_NAME='hello-actions-ecr-repo'
-          aws ecr describe-images --repository-name $ECR_REPO_NAME
+          aws ecr describe-images --repository-name $ECR_REPO_NAME --region us-east-1
 
       # ECS service update
       - name: Update ECS service
