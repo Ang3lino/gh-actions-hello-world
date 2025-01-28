@@ -8,6 +8,12 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: us-east-1
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      DOCKER_IMAGE_TAG: latest  # You can change this if needed
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -15,9 +21,18 @@ jobs:
       - name: Run deploy script
         run: |
           cd app
-          chmod +x ./deploy.sh  # Ensure the deploy script is executable
+          chmod +x ./deploy.sh
           ./deploy.sh
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: us-east-1
+
+      # Optionally, if you need to clean up or verify the push:
+      - name: Verify Docker image pushed
+        run: |
+          ECR_REPO_NAME='hello-actions-ecr-repo'
+          aws ecr describe-images --repository-name $ECR_REPO_NAME
+
+      # ECS service update
+      - name: Update ECS service
+        run: |
+          CLUSTER_NAME='hello-actions-cluster'
+          SERVICE_NAME='cc-hello-actions-service'
+          aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --force-new-deployment
