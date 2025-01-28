@@ -1,4 +1,4 @@
-name: Deploy to ECR
+name: Deploy to ECR and Apply Terraform
 
 on:
   push:
@@ -9,44 +9,50 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
+      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Set up AWS credentials securely using aws-actions/configure-aws-credentials
-      - name: Set up AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
-      # Log in to Amazon ECR with docker/login-action
-      - name: Log in to Amazon ECR
-        uses: docker/login-action@v2
-        with:
-          registry: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
-          username: AWS
-          password: ${{ secrets.AWS_ECR_AUTH_TOKEN }}
-
-      # Run deploy script
-      - name: Run deploy script
+      # Step 2: Check for changes in app/ and tf/ directories
+      - name: Check for changes in app/ and tf/ directories
+        id: changes
         run: |
-          cd app
-          chmod +x ./deploy.sh
-          ./deploy.sh
+          git fetch origin main
+          git diff --quiet HEAD^ HEAD -- app/ || echo "app-changes=true" >> $GITHUB_ENV
+          git diff --quiet HEAD^ HEAD -- tf/ || echo "tf-changes=true" >> $GITHUB_ENV
+
+      # Step 3: Apply Terraform if changes are detected in tf/
+      - name: Apply Terraform changes
+        if: env.tf-changes == 'true'
+        run: |
+          echo "Changes detected in tf/, applying Terraform..."
+          cd tf
+          terraform init
+          terraform apply -auto-approve
+
+      # Step 4: Deploy if changes are detected in app/
+      - name: Deploy only if app/ changed
+        if: env.app-changes == 'true'
         env:
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
           ECR_REPO_NAME: ${{ secrets.ECR_REPO_NAME }}
           DOCKER_IMAGE_TAG: latest  # Can be adjusted if needed
+        run: |
+          echo "Changes detected in app/, proceeding with deployment..."
+          cd app
+          chmod +x ./deploy.sh
+          ./deploy.sh
 
-      # Optionally, if you need to clean up or verify the push
+      # Step 5: Optionally verify Docker image pushed
       - name: Verify Docker image pushed
+        if: env.app-changes == 'true'
         run: |
           ECR_REPO_NAME='hello-actions-ecr-repo'
           aws ecr describe-images --repository-name $ECR_REPO_NAME --region us-east-1
 
-      # ECS service update
+      # Step 6: Update ECS service
       - name: Update ECS service
+        if: env.app-changes == 'true'
         run: |
           CLUSTER_NAME='hello-actions-cluster'
           SERVICE_NAME='cc-hello-actions-service'
