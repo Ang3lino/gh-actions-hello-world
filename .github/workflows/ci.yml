@@ -26,3 +26,5 @@ jobs:
           docker push ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/${{ secrets.ECR_REPO_NAME }}:latest
         env:
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          AWS_REGION: us-east-1
+          ECR_REPO_NAME: ${{ secrets.ECR_REPO_NAME }}
