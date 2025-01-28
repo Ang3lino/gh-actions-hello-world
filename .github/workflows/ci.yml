@@ -18,8 +18,8 @@ jobs:
         id: changes
         run: |
           git fetch origin main
-          git diff --quiet HEAD^ HEAD -- app/ || echo "app-changes=true" >> $GITHUB_ENV
-          git diff --quiet HEAD^ HEAD -- tf/ || echo "tf-changes=true" >> $GITHUB_ENV
+          if ! git diff --quiet origin/main -- app/; then echo "app-changes=true" >> $GITHUB_ENV; fi
+          if ! git diff --quiet origin/main -- tf/; then echo "tf-changes=true" >> $GITHUB_ENV; fi
 
       # Step 3: Set up AWS credentials for Terraform
       - name: Set up AWS credentials
@@ -53,23 +53,27 @@ jobs:
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
           ECR_REPO_NAME: ${{ secrets.ECR_REPO_NAME }}
           DOCKER_IMAGE_TAG: latest  # Can be adjusted if needed
+          AWS_REGION: us-east-1
         run: |
           echo "Changes detected in app/, proceeding with deployment..."
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
           cd app
           chmod +x ./deploy.sh
           ./deploy.sh
 
-      # Step 7: Optionally verify Docker image pushed
+      # Step 7: Verify Docker image pushed
       - name: Verify Docker image pushed
         if: env.app-changes == 'true'
+        env:
+          ECR_REPO_NAME: ${{ secrets.ECR_REPO_NAME }}
         run: |
-          ECR_REPO_NAME='hello-actions-ecr-repo'
           aws ecr describe-images --repository-name $ECR_REPO_NAME --region us-east-1
 
       # Step 8: Update ECS service
       - name: Update ECS service
         if: env.app-changes == 'true'
+        env:
+          CLUSTER_NAME: hello-actions-cluster  # Update with your cluster name
+          SERVICE_NAME: cc-hello-actions-service  # Update with your service name
         run: |
-          CLUSTER_NAME='hello-actions-cluster'
-          SERVICE_NAME='cc-hello-actions-service'
           aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --force-new-deployment
