@@ -69,13 +69,11 @@ The CI/CD pipeline is defined in the `.github/workflows` directory and uses the 
 
 ## Area Improvements
 
-1. **Shared Terraform State**  
+1. **Shared Terraform State**  Added
    In the case of multiple users interacting with the repository, Terraform state may be locked. To resolve this, configure a backend (e.g., AWS S3 + DynamoDB for state locking) to allow multiple users to safely collaborate on infrastructure changes.
 
-2. **Pipeline for Terraform Code**  
-   Consider creating a pipeline to handle Terraform code as part of the CI/CD flow. This could automate infrastructure changes, like:
-   - `terraform plan` for code validation.
-   - `terraform apply` for infrastructure updates.
+2. **Pipeline for Terraform Code**   Added
+   Consider creating a pipeline to handle Terraform code as part of the CI/CD flow. 
 
 3. **Optimize Docker Image Size**  
    To improve deployment times and reduce storage costs, consider optimizing the Docker image by:
